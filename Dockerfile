@@ -4,7 +4,8 @@ FROM alpine:3.17
 
 RUN apk add --no-cache \
         ca-certificates \
-        gcc
+        gcc \
+        musl-dev
 
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
@@ -29,13 +30,36 @@ RUN set -eux; \
     cargo --version; \
     rustc --version;
 
+RUN rustup default beta && \
+# latest version: https://crates.io/crates/cbindgen
+cargo install --version 0.24.3 cbindgen
+
 COPY hello_interop hello_interop
 COPY from_rust from_rust
+ADD cbindgen.toml cbindgen.toml
 
-RUN cargo build --release --manifest-path hello_interop/Cargo.toml && \
+RUN cargo metadata \
+        --all-features \
+        --format-version 1 \
+        --manifest-path hello_interop/Cargo.toml \
+        > metadata.out && \
+    cargo build --release --manifest-path hello_interop/Cargo.toml && \
+    cargo build \
+        --release \
+        --features c_api \
+        --target-dir hello_interop/c_api \
+        --manifest-path hello_interop/Cargo.toml && \
     cargo build --release --manifest-path from_rust/Cargo.toml
-# RUN cargo
+RUN \
+    cbindgen \
+        --config cbindgen.toml \
+        --crate hello_interop \
+        --output hello_interop.h \
+        --metadata metadata.out
+# strictly speaking, cbindgen is an overkill for this example but it's a convenient tool
+# RUN cbindgen --config cbindgen.toml --crate hello_interop --output hello_interop.h
 
 ADD run.sh run.sh
 
-ENTRYPOINT ["sh", "run.sh"]
+# ENTRYPOINT ["sh", "run.sh"]
+ENTRYPOINT [ "cat", "hello_interop.h" ]
