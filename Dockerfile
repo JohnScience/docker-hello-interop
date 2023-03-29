@@ -34,6 +34,8 @@ COPY from_rust from_rust
 
 RUN cargo build --release --manifest-path hello_interop/Cargo.toml && \
     cargo build --release --manifest-path from_rust/Cargo.toml
-# RUN cargo 
+# RUN cargo
 
-ENTRYPOINT ["from_rust/target/release/from_rust"]
+ADD run.sh run.sh
+
+ENTRYPOINT ["sh", "run.sh"]
