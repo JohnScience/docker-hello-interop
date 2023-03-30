@@ -146,4 +146,4 @@ extra_bindings = []
 crates = ["hello_interop"]
 all_features = false
 default_features = true
-features = []
+features = ["c_api"]

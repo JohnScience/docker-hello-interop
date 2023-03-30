@@ -30,12 +30,14 @@ RUN set -eux; \
     cargo --version; \
     rustc --version;
 
-RUN rustup default beta && \
+RUN rustup default nightly && \
+# strictly speaking, cbindgen is an overkill for this example but it's a convenient tool
 # latest version: https://crates.io/crates/cbindgen
-cargo install --version 0.24.3 cbindgen
+    cargo install --version 0.24.3 cbindgen
 
 COPY hello_interop hello_interop
 COPY from_rust from_rust
+COPY from_c from_c
 ADD cbindgen.toml cbindgen.toml
 
 RUN cargo metadata \
@@ -49,17 +51,26 @@ RUN cargo metadata \
         --features c_api \
         --target-dir hello_interop/c_api \
         --manifest-path hello_interop/Cargo.toml && \
-    cargo build --release --manifest-path from_rust/Cargo.toml
-RUN \
+    cargo build --release --manifest-path from_rust/Cargo.toml && \
+    cd hello_interop && \
     cbindgen \
-        --config cbindgen.toml \
-        --crate hello_interop \
-        --output hello_interop.h \
-        --metadata metadata.out
-# strictly speaking, cbindgen is an overkill for this example but it's a convenient tool
-# RUN cbindgen --config cbindgen.toml --crate hello_interop --output hello_interop.h
+        --config ../cbindgen.toml \
+        --output c_api/hello_interop.h \
+        --metadata ../metadata.out && \
+    cd ..
+RUN gcc \
+        -c \
+        -Ihello_interop/c_api \
+        from_c/main.c \
+        -o from_c/hello_from_c.o && \
+    gcc \
+        -o \
+        from_c/hello_from_c \
+        from_c/hello_from_c.o \
+        hello_interop/c_api/release/libhello_interop.a
 
 ADD run.sh run.sh
 
-# ENTRYPOINT ["sh", "run.sh"]
-ENTRYPOINT [ "cat", "hello_interop.h" ]
+ENTRYPOINT ["sh", "run.sh"]
+# ENTRYPOINT [ "ls", "hello_interop/c_api/release" ]
+# ENTRYPOINT [ "nm", "-g", "from_c/hello_from_c"]
