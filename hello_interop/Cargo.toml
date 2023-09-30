@@ -7,14 +7,14 @@ edition = "2021"
 
 [lib]
 crate-type = [
-    "rlib", 
+    "rlib",
     "staticlib",
     #"cdylib" is not supported because
     #   target `x86_64-unknown-linux-musl` does not support dynamic linking
 ]
 
 [dependencies]
-qualifier_attr = { version = "0.1", optional = true }
+qualifier_attr = { version = "0.2", optional = true }
 
 [features]
 c_api = ["dep:qualifier_attr"]
